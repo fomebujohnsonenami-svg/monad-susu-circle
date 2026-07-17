@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import { WalletConnect } from "@/components/WalletConnect";
 import { PayContributionButton } from "@/components/PayContributionButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useCircleDashboard } from "@/hooks/useCircleDashboard";
 import { CONTRACT_ADDRESS, MONAD_EXPLORER } from "@/lib/config";
 import { formatMon, shortenAddress } from "@/lib/format";
@@ -46,9 +47,17 @@ export function Dashboard() {
     : user.isLoading
       ? { tone: "muted" as const, title: "Checking…", detail: "Reading your round status." }
       : !user.isParticipant
-        ? { tone: "warn" as const, title: "Not a member", detail: "This address is not enrolled." }
+        ? {
+            tone: "warn" as const,
+            title: "Not a member",
+            detail: "This address is not enrolled.",
+          }
         : user.hasPaidRound
-          ? { tone: "ok" as const, title: "Paid", detail: "Contribution settled for this round." }
+          ? {
+              tone: "ok" as const,
+              title: "Paid",
+              detail: "Contribution settled for this round.",
+            }
           : {
               tone: "pending" as const,
               title: "Due",
@@ -63,105 +72,112 @@ export function Dashboard() {
             };
 
   return (
-    <div className="shell">
-      <header className="top">
-        <div className="brand-block">
-          <div className="brand-mark" aria-hidden />
-          <div>
-            <p className="brand">SusuCircle</p>
-            <p className="tagline">Round dues · pooled payouts</p>
+    <div className="spatial-stage">
+      <div className="shell">
+        <header className="top">
+          <div className="brand-block">
+            <div className="brand-mark" aria-hidden />
+            <div>
+              <p className="brand">SusuCircle</p>
+              <p className="tagline">Round dues · pooled payouts</p>
+            </div>
           </div>
-        </div>
-        <span className="network-chip">Monad Testnet · 10143</span>
-      </header>
+          <div className="top-actions">
+            <span className="network-chip">Monad · 10143</span>
+            <ThemeToggle />
+          </div>
+        </header>
 
-      <WalletConnect />
+        <WalletConnect />
 
-      <section className="panel" aria-labelledby="circle-heading">
-        <div className="panel-head">
-          <div>
-            <h2 id="circle-heading">Circle #{circleId.toString()}</h2>
-            <p className="sub">
-              {hasContract && CONTRACT_ADDRESS ? (
-                <a
-                  href={`${MONAD_EXPLORER}/address/${CONTRACT_ADDRESS}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {shortenAddress(CONTRACT_ADDRESS, 4)}
-                </a>
-              ) : (
-                "Contract address not set"
-              )}
-              {details ? ` · ${details.statusLabel}` : null}
+        <section className="panel" aria-labelledby="circle-heading">
+          <div className="panel-head">
+            <div>
+              <h2 id="circle-heading">Circle #{circleId.toString()}</h2>
+              <p className="sub">
+                {hasContract && CONTRACT_ADDRESS ? (
+                  <a
+                    href={`${MONAD_EXPLORER}/address/${CONTRACT_ADDRESS}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {shortenAddress(CONTRACT_ADDRESS, 4)}
+                  </a>
+                ) : (
+                  "Contract address not set"
+                )}
+                {details ? ` · ${details.statusLabel}` : null}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon"
+              onClick={() => void refetch()}
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={`icon ${isLoading || isFetching ? "spin" : ""}`}
+              />
+            </button>
+          </div>
+
+          {!hasContract ? (
+            <p className="empty">
+              Set the deployed contract address in .env.local.
             </p>
-          </div>
-          <button
-            type="button"
-            className="btn btn-ghost btn-icon"
-            onClick={() => void refetch()}
-            aria-label="Refresh"
-          >
-            <RefreshCw
-              className={`icon ${isLoading || isFetching ? "spin" : ""}`}
-            />
-          </button>
-        </div>
-
-        {!hasContract ? (
-          <p className="empty">Set the deployed contract address in .env.local.</p>
-        ) : isLoading ? (
-          <p className="empty">Loading circle…</p>
-        ) : isError || !details ? (
-          <p className="empty">No circle found for this ID on-chain.</p>
-        ) : (
-          <>
-            <div className="metrics">
-              <Metric
-                tone="pool"
-                label="Pool"
-                value={formatMon(details.poolAmount)}
-                hint={`${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} deposited`}
-              />
-              <Metric
-                tone="round"
-                label="Round"
-                value={
-                  details.currentRound !== undefined && details.totalRounds
-                    ? `${Number(details.currentRound) + 1}/${details.totalRounds.toString()}`
-                    : "—"
-                }
-                hint={
-                  details.nextRecipient
-                    ? `Payout → ${shortenAddress(details.nextRecipient)}`
-                    : "Payout recipient TBD"
-                }
-              />
-              <Metric
-                tone="members"
-                label="Members"
-                value={details.participantCount?.toString() ?? "—"}
-                hint={formatMon(details.contributionAmount, 4) + " / round"}
-              />
-            </div>
-
-            <div className={`status-strip status-${memberStatus.tone}`}>
-              <div>
-                <p className="status-kicker">{memberStatus.title}</p>
-                <p className="sub">{memberStatus.detail}</p>
+          ) : isLoading ? (
+            <p className="empty">Loading circle…</p>
+          ) : isError || !details ? (
+            <p className="empty">No circle found for this ID on-chain.</p>
+          ) : (
+            <>
+              <div className="metrics">
+                <Metric
+                  tone="pool"
+                  label="Pool"
+                  value={formatMon(details.poolAmount)}
+                  hint={`${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} deposited`}
+                />
+                <Metric
+                  tone="round"
+                  label="Round"
+                  value={
+                    details.currentRound !== undefined && details.totalRounds
+                      ? `${Number(details.currentRound) + 1}/${details.totalRounds.toString()}`
+                      : "—"
+                  }
+                  hint={
+                    details.nextRecipient
+                      ? `Payout → ${shortenAddress(details.nextRecipient)}`
+                      : "Payout recipient TBD"
+                  }
+                />
+                <Metric
+                  tone="members"
+                  label="Members"
+                  value={details.participantCount?.toString() ?? "—"}
+                  hint={formatMon(details.contributionAmount, 4) + " / round"}
+                />
               </div>
-            </div>
 
-            <PayContributionButton
-              circleId={circleId}
-              contributionAmount={details.contributionAmount}
-              canUserPay={payGate.canPay}
-              disabledReason={payGate.reason}
-              onConfirmed={onDepositConfirmed}
-            />
-          </>
-        )}
-      </section>
+              <div className={`status-strip status-${memberStatus.tone}`}>
+                <div>
+                  <p className="status-kicker">{memberStatus.title}</p>
+                  <p className="sub">{memberStatus.detail}</p>
+                </div>
+              </div>
+
+              <PayContributionButton
+                circleId={circleId}
+                contributionAmount={details.contributionAmount}
+                canUserPay={payGate.canPay}
+                disabledReason={payGate.reason}
+                onConfirmed={onDepositConfirmed}
+              />
+            </>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
