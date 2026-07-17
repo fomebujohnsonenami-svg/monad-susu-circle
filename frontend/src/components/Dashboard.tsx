@@ -96,17 +96,19 @@ export function Dashboard() {
               <h2 id="circle-heading">Circle #{circleId.toString()}</h2>
               <p className="sub">
                 {hasContract && CONTRACT_ADDRESS ? (
-                  <a
-                    href={`${MONAD_EXPLORER}/address/${CONTRACT_ADDRESS}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortenAddress(CONTRACT_ADDRESS, 4)}
-                  </a>
+                  <>
+                    <a
+                      href={`${MONAD_EXPLORER}/address/${CONTRACT_ADDRESS}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {shortenAddress(CONTRACT_ADDRESS, 4)}
+                    </a>
+                    {details ? ` · ${details.statusLabel}` : null}
+                  </>
                 ) : (
-                  "Contract address not set"
+                  "Monad Testnet"
                 )}
-                {details ? ` · ${details.statusLabel}` : null}
               </p>
             </div>
             <button
@@ -114,6 +116,7 @@ export function Dashboard() {
               className="btn btn-ghost btn-icon"
               onClick={() => void refetch()}
               aria-label="Refresh"
+              disabled={!hasContract}
             >
               <RefreshCw
                 className={`icon ${isLoading || isFetching ? "spin" : ""}`}
@@ -121,57 +124,85 @@ export function Dashboard() {
             </button>
           </div>
 
-          {!hasContract ? (
-            <p className="empty">
-              Set the deployed contract address in .env.local.
-            </p>
-          ) : isLoading ? (
+          {hasContract && isLoading ? (
             <p className="empty">Loading circle…</p>
-          ) : isError || !details ? (
-            <p className="empty">No circle found for this ID on-chain.</p>
           ) : (
             <>
               <div className="metrics">
                 <Metric
                   tone="pool"
                   label="Pool"
-                  value={formatMon(details.poolAmount)}
-                  hint={`${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} deposited`}
+                  value={
+                    details ? formatMon(details.poolAmount) : "—"
+                  }
+                  hint={
+                    details
+                      ? `${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} deposited`
+                      : "Waiting for circle data"
+                  }
                 />
                 <Metric
                   tone="round"
                   label="Round"
                   value={
-                    details.currentRound !== undefined && details.totalRounds
+                    details?.currentRound !== undefined && details.totalRounds
                       ? `${Number(details.currentRound) + 1}/${details.totalRounds.toString()}`
                       : "—"
                   }
                   hint={
-                    details.nextRecipient
+                    details?.nextRecipient
                       ? `Payout → ${shortenAddress(details.nextRecipient)}`
-                      : "Payout recipient TBD"
+                      : details
+                        ? "Payout recipient TBD"
+                        : "No active round"
                   }
                 />
                 <Metric
                   tone="members"
                   label="Members"
-                  value={details.participantCount?.toString() ?? "—"}
-                  hint={formatMon(details.contributionAmount, 4) + " / round"}
+                  value={details?.participantCount?.toString() ?? "—"}
+                  hint={
+                    details?.contributionAmount !== undefined
+                      ? formatMon(details.contributionAmount, 4) + " / round"
+                      : "Contribution unset"
+                  }
                 />
               </div>
 
-              <div className={`status-strip status-${memberStatus.tone}`}>
+              <div
+                className={`status-strip status-${
+                  !hasContract || isError || !details
+                    ? "muted"
+                    : memberStatus.tone
+                }`}
+              >
                 <div>
-                  <p className="status-kicker">{memberStatus.title}</p>
-                  <p className="sub">{memberStatus.detail}</p>
+                  <p className="status-kicker">
+                    {!hasContract
+                      ? "Circle offline"
+                      : isError || !details
+                        ? "No circle yet"
+                        : memberStatus.title}
+                  </p>
+                  <p className="sub">
+                    {!hasContract
+                      ? "Connect your wallet — circle data appears once onchain."
+                      : isError || !details
+                        ? "Create a circle onchain to start the first round."
+                        : memberStatus.detail}
+                  </p>
                 </div>
               </div>
 
               <PayContributionButton
                 circleId={circleId}
-                contributionAmount={details.contributionAmount}
-                canUserPay={payGate.canPay}
-                disabledReason={payGate.reason}
+                contributionAmount={details?.contributionAmount}
+                canUserPay={Boolean(details) && payGate.canPay}
+                disabledReason={
+                  !hasContract || !details
+                    ? "Payment unlocks when a circle is active."
+                    : payGate.reason
+                }
                 onConfirmed={onDepositConfirmed}
               />
             </>
