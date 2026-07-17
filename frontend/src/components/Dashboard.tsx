@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import {
   CircleDollarSign,
   RefreshCw,
@@ -11,13 +11,46 @@ import {
   Ban,
 } from "lucide-react";
 import { WalletConnect } from "@/components/WalletConnect";
+import { PayContributionButton } from "@/components/PayContributionButton";
 import { useCircleDashboard } from "@/hooks/useCircleDashboard";
 import { CONTRACT_ADDRESS, MONAD_EXPLORER } from "@/lib/config";
 import { formatMon, shortenAddress } from "@/lib/format";
 
 export function Dashboard() {
-  const { hasContract, circleId, details, user, isConnected, isLoading, isError, refetch } =
-    useCircleDashboard();
+  const {
+    hasContract,
+    circleId,
+    details,
+    user,
+    isConnected,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = useCircleDashboard();
+
+  const onDepositConfirmed = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  const payGate = useMemo(() => {
+    if (!isConnected) {
+      return { canPay: false, reason: "Connect your wallet to pay." };
+    }
+    if (!details?.isActive) {
+      return {
+        canPay: false,
+        reason: "Circle must be Active before contributions.",
+      };
+    }
+    if (!user.isParticipant) {
+      return { canPay: false, reason: "You are not a member of this circle." };
+    }
+    if (user.hasPaidRound) {
+      return { canPay: false, reason: "You already paid for this round." };
+    }
+    return { canPay: true, reason: undefined };
+  }, [details?.isActive, isConnected, user.hasPaidRound, user.isParticipant]);
 
   return (
     <div className="shell">
@@ -59,10 +92,12 @@ export function Dashboard() {
           <button
             type="button"
             className="btn btn-ghost btn-icon"
-            onClick={() => refetch()}
+            onClick={() => void refetch()}
             aria-label="Refresh circle data"
           >
-            <RefreshCw className={`icon ${isLoading ? "spin" : ""}`} />
+            <RefreshCw
+              className={`icon ${isLoading || isFetching ? "spin" : ""}`}
+            />
           </button>
         </div>
 
@@ -72,47 +107,51 @@ export function Dashboard() {
             <code>frontend/.env.local</code>.
           </p>
         ) : isLoading ? (
-          <p className="empty">Loading circle…</p>
+          <p className="empty">Fetching circle state from Monad…</p>
         ) : isError || !details ? (
           <p className="empty">
-            No circle data yet. Create a circle on-chain or check the circle ID.
+            No circle data on-chain yet. Create a circle or check{" "}
+            <code>NEXT_PUBLIC_CIRCLE_ID</code>.
           </p>
         ) : (
-          <div className="metrics">
-            <Metric
-              icon={<CircleDollarSign className="icon" />}
-              label="Total pool"
-              value={formatMon(details.poolSize)}
-              hint={`${formatMon(details.contributionAmount, 3)} × ${details.participantCount?.toString() ?? "0"}`}
-            />
-            <Metric
-              icon={<ArrowRightLeft className="icon" />}
-              label="Current round"
-              value={
-                details.currentRound !== undefined && details.totalRounds
-                  ? `${Number(details.currentRound) + 1} / ${details.totalRounds.toString()}`
-                  : "—"
-              }
-              hint={`${details.paidCount?.toString() ?? "0"} paid · ${details.statusLabel}`}
-            />
-            <Metric
-              icon={<Users className="icon" />}
-              label="Next recipient"
-              value={
-                details.nextRecipient
-                  ? shortenAddress(details.nextRecipient)
-                  : details.statusLabel === "Active"
-                    ? "…"
+          <>
+            <div className="metrics">
+              <Metric
+                icon={<CircleDollarSign className="icon" />}
+                label="Pool amount"
+                value={formatMon(details.poolAmount)}
+                hint={`Collected ${formatMon(details.collectedAmount, 3)} · ${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} paid`}
+              />
+              <Metric
+                icon={<ArrowRightLeft className="icon" />}
+                label="Current round"
+                value={
+                  details.currentRound !== undefined && details.totalRounds
+                    ? `${Number(details.currentRound) + 1} / ${details.totalRounds.toString()}`
                     : "—"
-              }
-              hint={
-                details.nextRecipient
-                  ? details.nextRecipient
-                  : "Available when circle is Active"
-              }
-              monoHint
+                }
+                hint={details.statusLabel}
+              />
+              <Metric
+                icon={<Users className="icon" />}
+                label="Participants"
+                value={details.participantCount?.toString() ?? "—"}
+                hint={
+                  details.nextRecipient
+                    ? `Next: ${shortenAddress(details.nextRecipient)}`
+                    : "Next recipient when Active"
+                }
+              />
+            </div>
+
+            <PayContributionButton
+              circleId={circleId}
+              contributionAmount={details.contributionAmount}
+              canUserPay={payGate.canPay}
+              disabledReason={payGate.reason}
+              onConfirmed={onDepositConfirmed}
             />
-          </div>
+          </>
         )}
       </section>
 
@@ -120,7 +159,7 @@ export function Dashboard() {
         <div className="panel-head">
           <div>
             <h2 id="user-heading">Your status</h2>
-            <p className="sub">Payment status for the current round</p>
+            <p className="sub">On-chain `hasPaidRound` for the current round</p>
           </div>
         </div>
 
@@ -129,7 +168,7 @@ export function Dashboard() {
             <Ban className="icon" />
             <div>
               <p>Connect a wallet to see your status</p>
-              <p className="sub">Reads `hasPaidRound` for your address</p>
+              <p className="sub">Reads live from the SusuCircle contract</p>
             </div>
           </div>
         ) : user.isLoading ? (
@@ -161,7 +200,11 @@ export function Dashboard() {
             <div>
               <p>Payment pending</p>
               <p className="sub">
-                You still need to deposit for round{" "}
+                Deposit{" "}
+                {details?.contributionAmount !== undefined
+                  ? formatMon(details.contributionAmount, 4)
+                  : "the contribution"}{" "}
+                for round{" "}
                 {details?.currentRound !== undefined
                   ? Number(details.currentRound) + 1
                   : "—"}
@@ -179,13 +222,11 @@ function Metric({
   label,
   value,
   hint,
-  monoHint,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   hint: string;
-  monoHint?: boolean;
 }) {
   return (
     <div className="metric">
@@ -194,7 +235,7 @@ function Metric({
         <span>{label}</span>
       </div>
       <p className="metric-value">{value}</p>
-      <p className={`sub ${monoHint ? "mono" : ""}`}>{hint}</p>
+      <p className="sub">{hint}</p>
     </div>
   );
 }

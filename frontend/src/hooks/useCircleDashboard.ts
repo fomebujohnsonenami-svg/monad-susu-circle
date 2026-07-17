@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { susuCircleAbi } from "@/lib/abi";
 import {
@@ -11,6 +12,10 @@ import {
 
 const hasContract = Boolean(CONTRACT_ADDRESS);
 
+/**
+ * Live circle state from Monad Testnet via `getCircle` / related view calls.
+ * No mocked values — all fields come from contract reads.
+ */
 export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
   const { address, isConnected } = useAccount();
 
@@ -20,7 +25,10 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
     functionName: "getCircle",
     args: [circleId],
     chainId: MONAD_CHAIN_ID,
-    query: { enabled: hasContract },
+    query: {
+      enabled: hasContract,
+      refetchInterval: 12_000,
+    },
   });
 
   const circle = circleQuery.data;
@@ -34,7 +42,10 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
     functionName: "getCurrentRecipient",
     args: [circleId],
     chainId: MONAD_CHAIN_ID,
-    query: { enabled: hasContract && isActive },
+    query: {
+      enabled: hasContract && isActive,
+      refetchInterval: 12_000,
+    },
   });
 
   const memberQuery = useReadContracts({
@@ -59,6 +70,7 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
         : [],
     query: {
       enabled: hasContract && Boolean(address) && currentRound !== undefined,
+      refetchInterval: 12_000,
     },
   });
 
@@ -67,10 +79,25 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
   const paidCount = circle?.[6];
   const participantCount = circle?.[8];
 
-  const poolSize =
+  // Round pool that will be paid out once everyone deposits
+  const poolAmount =
     contributionAmount !== undefined && participantCount !== undefined
       ? contributionAmount * participantCount
       : undefined;
+
+  // Funds already collected in the active round
+  const collectedAmount =
+    contributionAmount !== undefined && paidCount !== undefined
+      ? contributionAmount * paidCount
+      : undefined;
+
+  const refetchCircle = circleQuery.refetch;
+  const refetchRecipient = recipientQuery.refetch;
+  const refetchMember = memberQuery.refetch;
+
+  const refetchAll = useCallback(async () => {
+    await Promise.all([refetchCircle(), refetchRecipient(), refetchMember()]);
+  }, [refetchCircle, refetchRecipient, refetchMember]);
 
   return {
     hasContract,
@@ -78,9 +105,10 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
     isConnected,
     address,
     isLoading: circleQuery.isLoading,
+    isFetching: circleQuery.isFetching,
     isError: circleQuery.isError,
     error: circleQuery.error,
-    refetch: circleQuery.refetch,
+    refetch: refetchAll,
     details: circle
       ? {
           creator: circle[0],
@@ -94,14 +122,18 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
           statusLabel:
             status !== undefined ? CIRCLE_STATUS[status] ?? "Unknown" : "—",
           participantCount,
-          poolSize,
+          /** Full round pool (contribution × participants) from chain */
+          poolAmount,
+          /** Amount deposited so far this round */
+          collectedAmount,
           nextRecipient: recipientQuery.data,
+          isActive,
         }
       : null,
     user: {
       isParticipant: Boolean(memberQuery.data?.[0]?.result),
       hasPaidRound: Boolean(memberQuery.data?.[1]?.result),
-      isLoading: memberQuery.isLoading,
+      isLoading: memberQuery.isLoading || memberQuery.isFetching,
     },
   };
 }

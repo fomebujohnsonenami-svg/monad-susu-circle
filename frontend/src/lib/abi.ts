@@ -51,4 +51,11 @@ export const susuCircleAbi = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
+  {
+    type: "function",
+    name: "depositRoundFunds",
+    stateMutability: "payable",
+    inputs: [{ name: "circleId", type: "uint256" }],
+    outputs: [],
+  },
 ] as const;
