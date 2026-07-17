@@ -27,7 +27,7 @@ export function Toast({
 }) {
   useEffect(() => {
     if (!toast) return;
-    const id = window.setTimeout(onClose, 10_000);
+    const id = window.setTimeout(onClose, 8_000);
     return () => window.clearTimeout(id);
   }, [toast, onClose]);
 
@@ -54,7 +54,7 @@ export function Toast({
             target="_blank"
             rel="noreferrer"
           >
-            {shortenAddress(toast.hash, 6)}
+            Tx {shortenAddress(toast.hash, 6)}
             <ExternalLink className="icon" />
           </a>
         ) : (

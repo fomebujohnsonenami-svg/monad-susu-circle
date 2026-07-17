@@ -22,8 +22,8 @@ const ibmPlex = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Susu Circle · Monad",
-  description: "Rotating savings circle dashboard on Monad Testnet",
+  title: "SusuCircle",
+  description: "On-chain rotating savings circle ledger",
 };
 
 export default function RootLayout({

@@ -1,15 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, type ReactNode } from "react";
-import {
-  CircleDollarSign,
-  RefreshCw,
-  Users,
-  ArrowRightLeft,
-  CheckCircle2,
-  Clock3,
-  Ban,
-} from "lucide-react";
+import { useCallback, useMemo } from "react";
+import { RefreshCw } from "lucide-react";
 import { WalletConnect } from "@/components/WalletConnect";
 import { PayContributionButton } from "@/components/PayContributionButton";
 import { useCircleDashboard } from "@/hooks/useCircleDashboard";
@@ -35,33 +27,50 @@ export function Dashboard() {
 
   const payGate = useMemo(() => {
     if (!isConnected) {
-      return { canPay: false, reason: "Connect your wallet to pay." };
+      return { canPay: false, reason: "Connect a wallet to pay this round." };
     }
     if (!details?.isActive) {
-      return {
-        canPay: false,
-        reason: "Circle must be Active before contributions.",
-      };
+      return { canPay: false, reason: "Circle is not accepting deposits yet." };
     }
     if (!user.isParticipant) {
-      return { canPay: false, reason: "You are not a member of this circle." };
+      return { canPay: false, reason: "Your address is not in this circle." };
     }
     if (user.hasPaidRound) {
-      return { canPay: false, reason: "You already paid for this round." };
+      return { canPay: false, reason: "Already paid for this round." };
     }
     return { canPay: true, reason: undefined };
   }, [details?.isActive, isConnected, user.hasPaidRound, user.isParticipant]);
+
+  const memberStatus = !isConnected
+    ? { tone: "muted" as const, title: "No wallet", detail: "Connect to check dues." }
+    : user.isLoading
+      ? { tone: "muted" as const, title: "Checking…", detail: "Reading your round status." }
+      : !user.isParticipant
+        ? { tone: "warn" as const, title: "Not a member", detail: "This address is not enrolled." }
+        : user.hasPaidRound
+          ? { tone: "ok" as const, title: "Paid", detail: "Contribution settled for this round." }
+          : {
+              tone: "pending" as const,
+              title: "Due",
+              detail:
+                details?.contributionAmount !== undefined
+                  ? `${formatMon(details.contributionAmount, 4)} due for round ${
+                      details.currentRound !== undefined
+                        ? Number(details.currentRound) + 1
+                        : "—"
+                    }`
+                  : "Contribution due for this round.",
+            };
 
   return (
     <div className="shell">
       <header className="top">
         <div className="brand-block">
-          <p className="brand">Susu Circle</p>
-          <p className="tagline">Rotating savings on Monad Testnet</p>
+          <p className="brand">SusuCircle</p>
+          <p className="tagline">Circle ledger</p>
         </div>
-        <div className="network-chip">
-          <span className="pulse" />
-          Monad · 10143
+        <div className="top-meta">
+          <span className="network-chip">Monad Testnet · 10143</span>
         </div>
       </header>
 
@@ -70,30 +79,27 @@ export function Dashboard() {
       <section className="panel" aria-labelledby="circle-heading">
         <div className="panel-head">
           <div>
-            <h2 id="circle-heading">Active circle</h2>
+            <h2 id="circle-heading">Circle #{circleId.toString()}</h2>
             <p className="sub">
-              Circle #{circleId.toString()}
               {hasContract && CONTRACT_ADDRESS ? (
-                <>
-                  {" · "}
-                  <a
-                    href={`${MONAD_EXPLORER}/address/${CONTRACT_ADDRESS}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortenAddress(CONTRACT_ADDRESS, 3)}
-                  </a>
-                </>
+                <a
+                  href={`${MONAD_EXPLORER}/address/${CONTRACT_ADDRESS}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {shortenAddress(CONTRACT_ADDRESS, 4)}
+                </a>
               ) : (
-                " · set NEXT_PUBLIC_CONTRACT_ADDRESS"
+                "Contract address not set"
               )}
+              {details ? ` · ${details.statusLabel}` : null}
             </p>
           </div>
           <button
             type="button"
             className="btn btn-ghost btn-icon"
             onClick={() => void refetch()}
-            aria-label="Refresh circle data"
+            aria-label="Refresh"
           >
             <RefreshCw
               className={`icon ${isLoading || isFetching ? "spin" : ""}`}
@@ -102,46 +108,44 @@ export function Dashboard() {
         </div>
 
         {!hasContract ? (
-          <p className="empty">
-            Deploy the contract, then add the address to{" "}
-            <code>frontend/.env.local</code>.
-          </p>
+          <p className="empty">Set the deployed contract address in .env.local.</p>
         ) : isLoading ? (
-          <p className="empty">Fetching circle state from Monad…</p>
+          <p className="empty">Loading circle…</p>
         ) : isError || !details ? (
-          <p className="empty">
-            No circle data on-chain yet. Create a circle or check{" "}
-            <code>NEXT_PUBLIC_CIRCLE_ID</code>.
-          </p>
+          <p className="empty">No circle found for this ID on-chain.</p>
         ) : (
           <>
             <div className="metrics">
               <Metric
-                icon={<CircleDollarSign className="icon" />}
-                label="Pool amount"
+                label="Pool"
                 value={formatMon(details.poolAmount)}
-                hint={`Collected ${formatMon(details.collectedAmount, 3)} · ${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} paid`}
+                hint={`${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} deposited`}
               />
               <Metric
-                icon={<ArrowRightLeft className="icon" />}
-                label="Current round"
+                label="Round"
                 value={
                   details.currentRound !== undefined && details.totalRounds
-                    ? `${Number(details.currentRound) + 1} / ${details.totalRounds.toString()}`
+                    ? `${Number(details.currentRound) + 1}/${details.totalRounds.toString()}`
                     : "—"
                 }
-                hint={details.statusLabel}
-              />
-              <Metric
-                icon={<Users className="icon" />}
-                label="Participants"
-                value={details.participantCount?.toString() ?? "—"}
                 hint={
                   details.nextRecipient
-                    ? `Next: ${shortenAddress(details.nextRecipient)}`
-                    : "Next recipient when Active"
+                    ? `Payout → ${shortenAddress(details.nextRecipient)}`
+                    : "Payout recipient TBD"
                 }
               />
+              <Metric
+                label="Members"
+                value={details.participantCount?.toString() ?? "—"}
+                hint={formatMon(details.contributionAmount, 4) + " / round"}
+              />
+            </div>
+
+            <div className={`status-strip status-${memberStatus.tone}`}>
+              <div>
+                <p className="status-kicker">{memberStatus.title}</p>
+                <p className="sub">{memberStatus.detail}</p>
+              </div>
             </div>
 
             <PayContributionButton
@@ -154,88 +158,24 @@ export function Dashboard() {
           </>
         )}
       </section>
-
-      <section className="panel status-panel" aria-labelledby="user-heading">
-        <div className="panel-head">
-          <div>
-            <h2 id="user-heading">Your status</h2>
-            <p className="sub">On-chain `hasPaidRound` for the current round</p>
-          </div>
-        </div>
-
-        {!isConnected ? (
-          <div className="status-row muted-row">
-            <Ban className="icon" />
-            <div>
-              <p>Connect a wallet to see your status</p>
-              <p className="sub">Reads live from the SusuCircle contract</p>
-            </div>
-          </div>
-        ) : user.isLoading ? (
-          <div className="status-row muted-row">
-            <Clock3 className="icon spin" />
-            <div>
-              <p>Checking on-chain status…</p>
-            </div>
-          </div>
-        ) : !user.isParticipant ? (
-          <div className="status-row warn-row">
-            <Ban className="icon" />
-            <div>
-              <p>Not a member of this circle</p>
-              <p className="sub">Join before the circle fills to participate</p>
-            </div>
-          </div>
-        ) : user.hasPaidRound ? (
-          <div className="status-row ok-row">
-            <CheckCircle2 className="icon" />
-            <div>
-              <p>Paid for this round</p>
-              <p className="sub">Contribution recorded on Monad Testnet</p>
-            </div>
-          </div>
-        ) : (
-          <div className="status-row pending-row">
-            <Clock3 className="icon" />
-            <div>
-              <p>Payment pending</p>
-              <p className="sub">
-                Deposit{" "}
-                {details?.contributionAmount !== undefined
-                  ? formatMon(details.contributionAmount, 4)
-                  : "the contribution"}{" "}
-                for round{" "}
-                {details?.currentRound !== undefined
-                  ? Number(details.currentRound) + 1
-                  : "—"}
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
     </div>
   );
 }
 
 function Metric({
-  icon,
   label,
   value,
   hint,
 }: {
-  icon: ReactNode;
   label: string;
   value: string;
   hint: string;
 }) {
   return (
     <div className="metric">
-      <div className="metric-label">
-        {icon}
-        <span>{label}</span>
-      </div>
+      <p className="metric-label">{label}</p>
       <p className="metric-value">{value}</p>
-      <p className="sub">{hint}</p>
+      <p className="sub metric-hint">{hint}</p>
     </div>
   );
 }

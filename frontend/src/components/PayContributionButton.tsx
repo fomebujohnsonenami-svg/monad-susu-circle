@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Coins } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useDepositRoundFunds } from "@/hooks/useDepositRoundFunds";
 import { Toast } from "@/components/Toast";
 import { formatMon } from "@/lib/format";
@@ -22,14 +22,12 @@ export function PayContributionButton({
 }: Props) {
   const {
     payContribution,
-    isEstimatingGas,
     isWalletPrompting,
     isMining,
     isPending,
     canPay,
     toast,
     clearToast,
-    gasEstimate,
   } = useDepositRoundFunds({
     circleId,
     contributionAmount,
@@ -38,16 +36,12 @@ export function PayContributionButton({
   });
 
   const label = isWalletPrompting
-    ? "Confirm in wallet…"
+    ? "Confirm in wallet"
     : isMining
-      ? "Mining on Monad…"
-      : isEstimatingGas
-        ? "Estimating gas…"
-        : `Pay Contribution${
-            contributionAmount !== undefined
-              ? ` · ${formatMon(contributionAmount, 4)}`
-              : ""
-          }`;
+      ? "Confirming…"
+      : contributionAmount !== undefined
+        ? `Pay ${formatMon(contributionAmount, 4)}`
+        : "Pay contribution";
 
   return (
     <>
@@ -55,35 +49,27 @@ export function PayContributionButton({
         <button
           type="button"
           className="btn btn-primary pay-btn"
-          disabled={!canUserPay || !canPay || isPending || contributionAmount === undefined}
+          disabled={
+            !canUserPay ||
+            !canPay ||
+            isPending ||
+            contributionAmount === undefined
+          }
           onClick={() => {
-            void payContribution().catch(() => {
-              /* errors surfaced via toast */
-            });
+            void payContribution();
           }}
         >
-          {isPending ? (
-            <Loader2 className="icon spin" />
-          ) : (
-            <Coins className="icon" />
-          )}
+          {isPending && <Loader2 className="icon spin" />}
           {label}
         </button>
 
-        {disabledReason && !canUserPay && (
+        {!canUserPay && disabledReason ? (
           <p className="sub pay-hint">{disabledReason}</p>
-        )}
+        ) : null}
 
-        {canUserPay && gasEstimate !== undefined && !isPending && (
-          <p className="sub pay-hint">Est. gas: {gasEstimate.toString()} units</p>
-        )}
-
-        {isMining && (
-          <p className="sub pay-hint mining">
-            <Loader2 className="icon spin" />
-            Waiting for Monad Testnet confirmation…
-          </p>
-        )}
+        {isMining ? (
+          <p className="sub pay-hint mining">Waiting for confirmation</p>
+        ) : null}
       </div>
 
       <Toast toast={toast} onClose={clearToast} />

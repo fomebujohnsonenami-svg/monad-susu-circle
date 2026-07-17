@@ -10,6 +10,7 @@ import {
 import { encodeFunctionData } from "viem";
 import { susuCircleAbi } from "@/lib/abi";
 import { CONTRACT_ADDRESS, MONAD_CHAIN_ID } from "@/lib/config";
+import { formatTxError, isUserRejection } from "@/lib/errors";
 import type { ToastState } from "@/components/Toast";
 
 type DepositArgs = {
@@ -32,6 +33,7 @@ export function useDepositRoundFunds({
   const { address, chainId, isConnected } = useAccount();
   const [toast, setToast] = useState<ToastState>(null);
   const toastedHash = useRef<string | null>(null);
+  const handledWriteError = useRef<unknown>(null);
 
   const canPrepare =
     enabled &&
@@ -62,6 +64,7 @@ export function useDepositRoundFunds({
     chainId: MONAD_CHAIN_ID,
     query: {
       enabled: canPrepare && Boolean(calldata),
+      retry: false,
     },
   });
 
@@ -90,7 +93,7 @@ export function useDepositRoundFunds({
     toastedHash.current = txHash;
     setToast({
       kind: "success",
-      title: "Contribution confirmed on Monad",
+      title: "Payment confirmed",
       hash: txHash,
     });
     onConfirmed?.();
@@ -98,28 +101,36 @@ export function useDepositRoundFunds({
 
   useEffect(() => {
     const err = writeError || receiptError;
-    if (!err) return;
+    if (!err || handledWriteError.current === err) return;
+    handledWriteError.current = err;
+
+    // User closed the wallet prompt — no toast, no console noise
+    if (isUserRejection(err)) {
+      resetWrite();
+      return;
+    }
+
     setToast({
       kind: "error",
-      title: "Transaction failed",
-      message: shortenError(err),
+      title: "Payment failed",
+      message: formatTxError(err),
     });
-  }, [writeError, receiptError]);
+  }, [writeError, receiptError, resetWrite]);
 
   const payContribution = useCallback(async () => {
     if (!CONTRACT_ADDRESS || contributionAmount === undefined) {
       setToast({
         kind: "error",
-        title: "Contract not configured",
-        message: "Set NEXT_PUBLIC_CONTRACT_ADDRESS in frontend/.env.local",
+        title: "Contract missing",
+        message: "Add NEXT_PUBLIC_CONTRACT_ADDRESS to .env.local",
       });
       return;
     }
     if (!isConnected || !address) {
       setToast({
         kind: "error",
-        title: "Wallet not connected",
-        message: "Connect your wallet on Monad Testnet first.",
+        title: "Wallet required",
+        message: "Connect a wallet on Monad Testnet.",
       });
       return;
     }
@@ -127,21 +138,27 @@ export function useDepositRoundFunds({
       setToast({
         kind: "error",
         title: "Wrong network",
-        message: "Switch to Monad Testnet (chain ID 10143).",
+        message: "Switch to Monad Testnet (10143).",
       });
       return;
     }
 
+    handledWriteError.current = null;
     resetWrite();
 
     try {
-      // Refresh gas estimate right before sending (Viem eth_estimateGas)
       const estimateResult = await refetchGas();
       if (estimateResult.error) {
-        throw estimateResult.error;
+        if (isUserRejection(estimateResult.error)) return;
+        setToast({
+          kind: "error",
+          title: "Gas estimate failed",
+          message: formatTxError(estimateResult.error),
+        });
+        return;
       }
+
       const gas = estimateResult.data ?? gasEstimate;
-      // Small buffer for Monad fee market variance
       const gasWithBuffer = gas ? (gas * 120n) / 100n : undefined;
 
       await writeContractAsync({
@@ -154,12 +171,16 @@ export function useDepositRoundFunds({
         gas: gasWithBuffer,
       });
     } catch (err) {
+      // Rejection is normal UX — swallow quietly (do not rethrow)
+      if (isUserRejection(err)) {
+        resetWrite();
+        return;
+      }
       setToast({
         kind: "error",
-        title: "Transaction failed",
-        message: shortenError(err),
+        title: "Payment failed",
+        message: formatTxError(err),
       });
-      throw err;
     }
   }, [
     address,
@@ -187,16 +208,4 @@ export function useDepositRoundFunds({
     clearToast: () => setToast(null),
     canPay: canPrepare && !isWalletPrompting && !isMining,
   };
-}
-
-function shortenError(err: unknown) {
-  if (!err) return "Unknown error";
-  if (typeof err === "string") return err;
-  if (err instanceof Error) {
-    const msg = err.message || "Unknown error";
-    // Wagmi/viem errors can be very long — keep toast readable
-    const short = msg.split("\n")[0] ?? msg;
-    return short.length > 180 ? `${short.slice(0, 180)}…` : short;
-  }
-  return "Unknown error";
 }
