@@ -66,12 +66,13 @@ export function Dashboard() {
     <div className="shell">
       <header className="top">
         <div className="brand-block">
-          <p className="brand">SusuCircle</p>
-          <p className="tagline">Circle ledger</p>
+          <div className="brand-mark" aria-hidden />
+          <div>
+            <p className="brand">SusuCircle</p>
+            <p className="tagline">Round dues · pooled payouts</p>
+          </div>
         </div>
-        <div className="top-meta">
-          <span className="network-chip">Monad Testnet · 10143</span>
-        </div>
+        <span className="network-chip">Monad Testnet · 10143</span>
       </header>
 
       <WalletConnect />
@@ -117,11 +118,13 @@ export function Dashboard() {
           <>
             <div className="metrics">
               <Metric
+                tone="pool"
                 label="Pool"
                 value={formatMon(details.poolAmount)}
                 hint={`${details.paidCount?.toString() ?? "0"}/${details.participantCount?.toString() ?? "0"} deposited`}
               />
               <Metric
+                tone="round"
                 label="Round"
                 value={
                   details.currentRound !== undefined && details.totalRounds
@@ -135,6 +138,7 @@ export function Dashboard() {
                 }
               />
               <Metric
+                tone="members"
                 label="Members"
                 value={details.participantCount?.toString() ?? "—"}
                 hint={formatMon(details.contributionAmount, 4) + " / round"}
@@ -163,16 +167,18 @@ export function Dashboard() {
 }
 
 function Metric({
+  tone,
   label,
   value,
   hint,
 }: {
+  tone: "pool" | "round" | "members";
   label: string;
   value: string;
   hint: string;
 }) {
   return (
-    <div className="metric">
+    <div className={`metric metric-${tone}`}>
       <p className="metric-label">{label}</p>
       <p className="metric-value">{value}</p>
       <p className="sub metric-hint">{hint}</p>
