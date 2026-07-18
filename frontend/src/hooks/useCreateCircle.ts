@@ -12,6 +12,8 @@ import { susuCircleAbi } from "@/lib/abi";
 import { CONTRACT_ADDRESS, MONAD_CHAIN_ID } from "@/lib/config";
 import {
   frequencyToSeconds,
+  generateInviteCode,
+  saveCirclePrivacy,
   type Frequency,
   upsertLocalCircle,
   type LocalCircle,
@@ -24,6 +26,7 @@ type CreateInput = {
   contributionMon: string;
   frequency: Frequency;
   maxParticipants: number;
+  isPrivate: boolean;
 };
 
 type CreateResult = {
@@ -82,6 +85,7 @@ export function useCreateCircle(onCreated?: (result: CreateResult) => void) {
         /* keep fallback id */
       }
 
+      const inviteCode = pendingMeta.isPrivate ? generateInviteCode() : undefined;
       upsertLocalCircle({
         id: circleId,
         name: pendingMeta.name,
@@ -97,12 +101,23 @@ export function useCreateCircle(onCreated?: (result: CreateResult) => void) {
         creator: address,
         createdAt: Date.now(),
         source: "local",
+        isPrivate: pendingMeta.isPrivate,
+        inviteCode,
+      });
+      saveCirclePrivacy(circleId, {
+        isPrivate: pendingMeta.isPrivate,
+        inviteCode,
       });
 
       setToast({
         kind: "success",
-        title: "Circle created",
+        title: pendingMeta.isPrivate
+          ? "Private circle created"
+          : "Circle created",
         hash: txHash,
+        message: inviteCode
+          ? `Invite code ${inviteCode} — share it with trusted members.`
+          : undefined,
       });
       setPendingMeta(null);
       onCreated?.({ circleId, onchain: true });
@@ -200,6 +215,7 @@ export function useCreateCircle(onCreated?: (result: CreateResult) => void) {
         address ?? ("0x0000000000000000000000000000000000000001" as `0x${string}`);
       // Local demo circles start Active so Pay Contribution is usable immediately.
       // Onchain creates remain Open until seats fill (contract rules).
+      const inviteCode = input.isPrivate ? generateInviteCode() : undefined;
       const circle: LocalCircle = {
         id: localId,
         name,
@@ -215,15 +231,19 @@ export function useCreateCircle(onCreated?: (result: CreateResult) => void) {
         creator,
         createdAt: Date.now(),
         source: "local",
+        isPrivate: input.isPrivate,
+        inviteCode,
       };
       upsertLocalCircle(circle);
       setIsSimulating(false);
       setToast({
         kind: "success",
-        title: "Circle created",
-        message: CONTRACT_ADDRESS
-          ? "Saved locally — connect on Monad Testnet to create onchain."
-          : `${name} is ready. Open it below to manage rounds.`,
+        title: input.isPrivate ? "Private circle created" : "Circle created",
+        message: inviteCode
+          ? `Invite code ${inviteCode} — copy it from your dashboard to share.`
+          : CONTRACT_ADDRESS
+            ? "Saved locally — connect on Monad Testnet to create onchain."
+            : `${name} is ready. Open it below to manage rounds.`,
       });
 
       const result = { circleId: localId, onchain: false };

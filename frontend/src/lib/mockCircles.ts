@@ -22,6 +22,7 @@ export const MOCK_CIRCLES: LocalCircle[] = [
     creator: "0x1111111111111111111111111111111111111111",
     createdAt: Date.now() - 86_400_000,
     source: "mock",
+    isPrivate: false,
   },
   {
     id: "mock-2",
@@ -43,6 +44,8 @@ export const MOCK_CIRCLES: LocalCircle[] = [
     creator: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     createdAt: Date.now() - 172_800_000,
     source: "mock",
+    isPrivate: true,
+    inviteCode: "SUSU-K4M9",
   },
   {
     id: "mock-3",
@@ -68,5 +71,6 @@ export const MOCK_CIRCLES: LocalCircle[] = [
     creator: "0x1010101010101010101010101010101010101010",
     createdAt: Date.now() - 2_592_000_000,
     source: "mock",
+    isPrivate: false,
   },
 ];

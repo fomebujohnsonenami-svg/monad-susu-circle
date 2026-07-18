@@ -9,8 +9,10 @@ import {
 import { susuCircleAbi } from "@/lib/abi";
 import { CONTRACT_ADDRESS, MONAD_CHAIN_ID } from "@/lib/config";
 import {
+  getCirclePrivacy,
   loadLocalCircles,
   upsertLocalCircle,
+  validateInviteCode,
   type LocalCircle,
 } from "@/lib/circleMeta";
 import { MOCK_CIRCLES } from "@/lib/mockCircles";
@@ -23,6 +25,24 @@ function findLocalOrMock(id: string): LocalCircle | undefined {
     MOCK_CIRCLES.find((c) => c.id === id)
   );
 }
+
+function resolveInvite(circleId: string): {
+  isPrivate: boolean;
+  inviteCode?: string;
+} {
+  const local = findLocalOrMock(circleId);
+  if (local?.isPrivate || local?.inviteCode) {
+    return {
+      isPrivate: Boolean(local.isPrivate),
+      inviteCode: local.inviteCode,
+    };
+  }
+  return getCirclePrivacy(circleId);
+}
+
+export type JoinOptions = {
+  inviteCode?: string;
+};
 
 export function useJoinCircle(onJoined?: (circleId: string) => void) {
   const { address, chainId, isConnected } = useAccount();
@@ -80,24 +100,37 @@ export function useJoinCircle(onJoined?: (circleId: string) => void) {
   }, [writeError, receiptError, resetWrite]);
 
   const joinCircle = useCallback(
-    async (circleId: string) => {
+    async (
+      circleId: string,
+      options?: JoinOptions
+    ): Promise<{ ok: boolean; error?: string }> => {
       if (!isConnected || !address) {
+        const message = "Connect a wallet to join a circle.";
         setToast({
           kind: "error",
           title: "Wallet required",
-          message: "Connect a wallet to join a circle.",
+          message,
         });
-        return;
+        return { ok: false, error: message };
+      }
+
+      const privacy = resolveInvite(circleId);
+      if (privacy.isPrivate) {
+        if (!validateInviteCode(options?.inviteCode ?? "", privacy.inviteCode)) {
+          const message = "Invalid Invite Code. Access Denied.";
+          setToast({
+            kind: "error",
+            title: "Access denied",
+            message,
+          });
+          return { ok: false, error: message };
+        }
       }
 
       const isNumeric = /^\d+$/.test(circleId);
 
       // Onchain join for numeric circle ids
-      if (
-        isNumeric &&
-        CONTRACT_ADDRESS &&
-        chainId === MONAD_CHAIN_ID
-      ) {
+      if (isNumeric && CONTRACT_ADDRESS && chainId === MONAD_CHAIN_ID) {
         handledWriteError.current = null;
         resetWrite();
         setPendingId(circleId);
@@ -110,50 +143,56 @@ export function useJoinCircle(onJoined?: (circleId: string) => void) {
             args: [BigInt(circleId)],
             chainId: MONAD_CHAIN_ID,
           });
+          return { ok: true };
         } catch (err) {
           if (isUserRejection(err)) {
             resetWrite();
             setPendingId(null);
             setBusyId(null);
-            return;
+            return { ok: false, error: "Wallet request rejected." };
           }
+          const message = formatTxError(err);
           setToast({
             kind: "error",
             title: "Join failed",
-            message: formatTxError(err),
+            message,
           });
           setPendingId(null);
           setBusyId(null);
+          return { ok: false, error: message };
         }
-        return;
       }
 
       // Local / mock join
       const base = findLocalOrMock(circleId);
       if (!base) {
+        const message = "This circle is no longer available.";
         setToast({
           kind: "error",
           title: "Circle not found",
-          message: "This circle is no longer available.",
+          message,
         });
-        return;
+        return { ok: false, error: message };
       }
-      if (base.participants.some((p) => p.toLowerCase() === address.toLowerCase())) {
+      if (
+        base.participants.some((p) => p.toLowerCase() === address.toLowerCase())
+      ) {
         setToast({
           kind: "error",
           title: "Already a member",
           message: "You already joined this circle.",
         });
         onJoined?.(circleId);
-        return;
+        return { ok: true };
       }
       if (base.memberCount >= base.maxParticipants) {
+        const message = "No open slots left in this circle.";
         setToast({
           kind: "error",
           title: "Circle full",
-          message: "No open slots left in this circle.",
+          message,
         });
-        return;
+        return { ok: false, error: message };
       }
 
       setBusyId(circleId);
@@ -178,6 +217,7 @@ export function useJoinCircle(onJoined?: (circleId: string) => void) {
           : "You are enrolled in the rotation order.",
       });
       onJoined?.(circleId);
+      return { ok: true };
     },
     [
       address,

@@ -673,6 +673,41 @@ select.field-input {
   border-radius: 14px;
 }
 
+.field-span {
+  grid-column: 1 / -1;
+}
+
+.privacy-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, var(--accent-soft), var(--panel-strong));
+  cursor: pointer;
+}
+
+.privacy-toggle input {
+  margin-top: 0.2rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.privacy-toggle-title {
+  display: block;
+  font-weight: 750;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+}
+
+.privacy-toggle .sub {
+  display: block;
+  margin-top: 0.2rem !important;
+}
+
 /* —— Circle explorer cards —— */
 .circle-grid {
   display: grid;
@@ -765,6 +800,13 @@ html[data-theme="dark"] .circle-rate {
   background: var(--panel);
 }
 
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+
 .pill-open {
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
@@ -773,6 +815,20 @@ html[data-theme="dark"] .circle-rate {
 .pill-active {
   background: var(--gold-soft);
   border-color: color-mix(in srgb, var(--gold) 35%, var(--line));
+}
+
+.pill-private {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: color-mix(in srgb, var(--ink) 8%, var(--panel));
+  border-color: color-mix(in srgb, var(--ink-muted) 35%, var(--line));
+  color: var(--ink-muted);
+}
+
+.pill-private .icon {
+  width: 0.7rem;
+  height: 0.7rem;
 }
 
 .pill-completed,
@@ -880,6 +936,115 @@ html[data-theme="dark"] .circle-rate {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--coral);
+}
+
+.invite-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-bottom: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: linear-gradient(135deg, var(--accent-soft), var(--panel-strong));
+}
+
+.invite-banner-muted {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.invite-banner .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.invite-code {
+  margin: 0.35rem 0 0.15rem !important;
+  font-size: clamp(1.15rem, 3vw, 1.4rem);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  color: var(--accent-deep);
+}
+
+html[data-theme="dark"] .invite-code {
+  color: var(--accent);
+}
+
+.invite-banner-copy {
+  min-width: 0;
+}
+
+/* Invite modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(7, 19, 22, 0.55);
+  backdrop-filter: blur(10px);
+  animation: float-in 180ms ease-out both;
+}
+
+.modal-panel {
+  width: min(420px, 100%);
+  padding: 1.05rem;
+  border-radius: 18px;
+  border: 1px solid var(--glass-edge);
+  background: var(--panel-strong);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(22px) saturate(1.3);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.modal-panel h3 {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.modal-error {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
+  background: color-mix(in srgb, var(--danger) 12%, var(--panel));
+  color: var(--danger);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .invite-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .invite-banner .btn {
+    width: 100%;
+  }
 }
 
 .toast {

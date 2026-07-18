@@ -83,7 +83,7 @@ export function Dashboard() {
           selectedId={selectedId}
           busyId={busyId}
           onSelect={selectCircle}
-          onJoin={(id) => void joinCircle(id)}
+          onJoin={(id, options) => joinCircle(id, options)}
         />
 
         <CircleDashboardPanel

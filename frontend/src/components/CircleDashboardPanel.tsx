@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Check, Copy, Lock, RefreshCw } from "lucide-react";
 import { useAccount } from "wagmi";
 import { PayContributionButton } from "@/components/PayContributionButton";
 import { Toast } from "@/components/Toast";
@@ -10,7 +10,11 @@ import { useCircleDashboard } from "@/hooks/useCircleDashboard";
 import { useCircleParticipants } from "@/hooks/useCircleParticipants";
 import type { ExplorerCircle } from "@/hooks/useActiveCircles";
 import type { LocalCircle } from "@/lib/circleMeta";
-import { loadLocalCircles, upsertLocalCircle } from "@/lib/circleMeta";
+import {
+  getCirclePrivacy,
+  loadLocalCircles,
+  upsertLocalCircle,
+} from "@/lib/circleMeta";
 import { CONTRACT_ADDRESS, MONAD_EXPLORER } from "@/lib/config";
 import { formatMon, shortenAddress } from "@/lib/format";
 
@@ -46,8 +50,26 @@ export function CircleDashboardPanel({
 
   const [localToast, setLocalToast] = useState<ToastState>(null);
   const [payingLocal, setPayingLocal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const usingLocal = Boolean(localDetails) && !isOnchainId;
+
+  const privacy = useMemo(() => {
+    if (localDetails?.isPrivate || localDetails?.inviteCode) {
+      return {
+        isPrivate: Boolean(localDetails.isPrivate),
+        inviteCode: localDetails.inviteCode,
+      };
+    }
+    if (selectedExplorer?.isPrivate || selectedExplorer?.inviteCode) {
+      return {
+        isPrivate: Boolean(selectedExplorer.isPrivate),
+        inviteCode: selectedExplorer.inviteCode,
+      };
+    }
+    if (selectedId) return getCirclePrivacy(selectedId);
+    return { isPrivate: false as const };
+  }, [localDetails, selectedExplorer, selectedId]);
 
   const view = useMemo(() => {
     if (usingLocal && localDetails) {
@@ -64,6 +86,10 @@ export function CircleDashboardPanel({
             (p) => p.toLowerCase() === address.toLowerCase()
           )
         : false;
+      const isCreator = Boolean(
+        address &&
+          localDetails.creator.toLowerCase() === address.toLowerCase()
+      );
 
       return {
         name: localDetails.name,
@@ -82,10 +108,16 @@ export function CircleDashboardPanel({
         hasPaidRound: false,
         frequency: localDetails.frequency,
         rateLabel: selectedExplorer?.rateLabel,
+        isCreator,
+        isPrivate: Boolean(localDetails.isPrivate ?? privacy.isPrivate),
+        inviteCode: localDetails.inviteCode ?? privacy.inviteCode,
       };
     }
 
     if (details) {
+      const isCreator = Boolean(
+        address && details.creator.toLowerCase() === address.toLowerCase()
+      );
       return {
         name: selectedExplorer?.name ?? `Circle #${selectedId}`,
         statusLabel: details.statusLabel,
@@ -103,6 +135,9 @@ export function CircleDashboardPanel({
         hasPaidRound: user.hasPaidRound,
         frequency: selectedExplorer?.frequency,
         rateLabel: selectedExplorer?.rateLabel,
+        isCreator,
+        isPrivate: privacy.isPrivate,
+        inviteCode: privacy.inviteCode,
       };
     }
 
@@ -112,12 +147,30 @@ export function CircleDashboardPanel({
     details,
     localDetails,
     onchainParticipants,
+    privacy.inviteCode,
+    privacy.isPrivate,
     selectedExplorer,
     selectedId,
     user.hasPaidRound,
     user.isParticipant,
     usingLocal,
   ]);
+
+  const copyInviteCode = useCallback(async () => {
+    const code = view?.inviteCode;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setLocalToast({
+        kind: "error",
+        title: "Copy failed",
+        message: "Could not copy invite code. Select and copy it manually.",
+      });
+    }
+  }, [view?.inviteCode]);
 
   const onDepositConfirmed = useCallback(() => {
     void refetch();
@@ -260,6 +313,43 @@ export function CircleDashboardPanel({
         </p>
       ) : view ? (
         <>
+          {view.isPrivate &&
+          view.inviteCode &&
+          (view.isCreator ||
+            (usingLocal && localDetails?.source === "local" && !address)) ? (
+            <div className="invite-banner">
+              <div className="invite-banner-copy">
+                <p className="label">
+                  <Lock className="icon" />
+                  Private invite code
+                </p>
+                <p className="invite-code mono">{view.inviteCode}</p>
+                <p className="sub">
+                  Share this code with trusted members so they can join.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void copyInviteCode()}
+              >
+                {copied ? <Check className="icon" /> : <Copy className="icon" />}
+                {copied ? "Copied" : "Copy Code"}
+              </button>
+            </div>
+          ) : view.isPrivate ? (
+            <div className="invite-banner invite-banner-muted">
+              <p className="label">
+                <Lock className="icon" />
+                Private circle
+              </p>
+              <p className="sub">
+                Invite-only access. Ask the creator for the code if you need to
+                invite others.
+              </p>
+            </div>
+          ) : null}
+
           <div className="metrics">
             <Metric
               tone="pool"

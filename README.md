@@ -14,6 +14,32 @@ Traditional Susu groups rely entirely on physical cash and manual bookkeeping, l
 
 Monad Susu Circle automates the entire process onchain. Smart contracts securely handle deposits, enforce round schedules, distribute the total pool automatically to the designated winner, and provide absolute transparency for every participant.
 
+Trusted groups can also keep circles **invite-only**: creators generate a shareable code so strangers cannot join from the public explorer.
+
+---
+
+### ✨ Core features
+
+* **Create a Susu Circle** — Set name, contribution amount (MON), frequency (daily / weekly / monthly), and max participants.
+* **Active Circles explorer** — Browse open circles, view slots filled, and join with one click.
+* **My Circle Dashboard** — Rotation order, current payout turn, round pool progress, and **Pay Contribution**.
+* **Private circles (invite only)** — Restrict joins to people who have the creator’s invite code.
+
+#### Private / invite-only circles
+
+When creating a circle, enable **Make Circle Private (Invite Only)**. The app generates a unique code in the form `SUSU-XXXX` (for example, `SUSU-X7F2`).
+
+| Step | What happens |
+|------|----------------|
+| Create | A random invite code is generated and stored with the circle. |
+| Share | The creator sees the code on **My Circle Dashboard** with a **Copy Code** button. |
+| Join | On a private circle, **Join with Code** opens a modal: *“This is a Private Circle. Enter Invite Code to Join.”* |
+| Validate | A correct code enrolls the wallet in the circle. An empty or wrong code shows **Invalid Invite Code. Access Denied.** |
+
+Public circles stay open join. Private circles still appear in the explorer (with a **Private** badge) but require the invite code before a wallet can become a participant.
+
+> Invite-code checks run in the frontend (local / demo + wallet-gated join). Use them to keep demo and trusted-group flows gated until onchain access control is added to the contract.
+
 ---
 
 ### 🚀 Technical Details
@@ -87,7 +113,7 @@ Monad Susu Circle automates the entire process onchain. Smart contracts securely
    npm run dev
    ```
 
-   Open [http://localhost:3000](http://localhost:3000), connect a wallet on Monad Testnet, and manage circle dues onchain.
+   Open [http://localhost:3000](http://localhost:3000), connect a wallet on Monad Testnet, then create or join a circle (use an invite code for private ones) and pay round contributions.
 
 ---
 

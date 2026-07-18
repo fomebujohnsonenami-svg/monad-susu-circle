@@ -10,6 +10,7 @@ import {
 } from "@/lib/config";
 import {
   getCircleName,
+  getCirclePrivacy,
   loadLocalCircles,
   secondsToFrequency,
   type Frequency,
@@ -36,6 +37,8 @@ export type ExplorerCircle = {
   paidCount: number;
   participants: `0x${string}`[];
   creator?: `0x${string}`;
+  isPrivate: boolean;
+  inviteCode?: string;
 };
 
 const hasContract = Boolean(CONTRACT_ADDRESS);
@@ -44,6 +47,9 @@ function toExplorer(circle: LocalCircle): ExplorerCircle {
   const amountLabel = `${Number(circle.contributionMon).toLocaleString(undefined, {
     maximumFractionDigits: 4,
   })} MON`;
+  const privacy = getCirclePrivacy(circle.id);
+  const isPrivate = Boolean(circle.isPrivate ?? privacy.isPrivate);
+  const inviteCode = circle.inviteCode ?? privacy.inviteCode;
   return {
     id: circle.id,
     name: circle.name,
@@ -63,6 +69,8 @@ function toExplorer(circle: LocalCircle): ExplorerCircle {
     paidCount: circle.paidCount,
     participants: circle.participants,
     creator: circle.creator,
+    isPrivate,
+    inviteCode,
   };
 }
 
@@ -135,6 +143,8 @@ export function useActiveCircles() {
       const amountLabel = formatMon(contributionAmount, 4);
       const members = Number(participantCount);
       const max = Number(totalRounds);
+      const privacy = getCirclePrivacy(id);
+      const localMeta = loadLocalCircles().find((c) => c.id === id);
 
       list.push({
         id,
@@ -154,10 +164,12 @@ export function useActiveCircles() {
         paidCount: Number(paidCount),
         participants: [],
         creator,
+        isPrivate: Boolean(localMeta?.isPrivate ?? privacy.isPrivate),
+        inviteCode: localMeta?.inviteCode ?? privacy.inviteCode,
       });
     });
     return list;
-  }, [circlesQuery.data, ids]);
+  }, [circlesQuery.data, ids, tick]);
 
   const localAndMock = useMemo(() => {
     void tick;

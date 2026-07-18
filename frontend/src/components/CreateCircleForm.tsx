@@ -15,6 +15,7 @@ export function CreateCircleForm({ onCreated }: Props) {
   const [amount, setAmount] = useState("5");
   const [frequency, setFrequency] = useState<Frequency>("Weekly");
   const [maxParticipants, setMaxParticipants] = useState(6);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const { createCircle, isPending, isWalletPrompting, isMining, toast, clearToast } =
     useCreateCircle((result) => {
@@ -23,6 +24,7 @@ export function CreateCircleForm({ onCreated }: Props) {
       setAmount("5");
       setFrequency("Weekly");
       setMaxParticipants(6);
+      setIsPrivate(false);
     });
 
   const onSubmit = (e: FormEvent) => {
@@ -32,6 +34,7 @@ export function CreateCircleForm({ onCreated }: Props) {
       contributionMon: amount,
       frequency,
       maxParticipants,
+      isPrivate,
     });
   };
 
@@ -109,6 +112,23 @@ export function CreateCircleForm({ onCreated }: Props) {
             onChange={(e) => setMaxParticipants(Number(e.target.value))}
             required
           />
+        </label>
+
+        <label className="privacy-toggle field-span">
+          <input
+            type="checkbox"
+            checked={isPrivate}
+            onChange={(e) => setIsPrivate(e.target.checked)}
+          />
+          <span>
+            <span className="privacy-toggle-title">
+              Make Circle Private (Invite Only)
+            </span>
+            <span className="sub">
+              Generates a unique invite code (e.g. SUSU-X7F2) that members must
+              enter to join.
+            </span>
+          </span>
         </label>
 
         <button
