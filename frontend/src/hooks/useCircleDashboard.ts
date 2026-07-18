@@ -14,10 +14,13 @@ const hasContract = Boolean(CONTRACT_ADDRESS);
 
 /**
  * Live circle state from Monad Testnet via `getCircle` / related view calls.
- * No mocked values — all fields come from contract reads.
  */
-export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
+export function useCircleDashboard(
+  circleId = DEFAULT_CIRCLE_ID,
+  options?: { enabled?: boolean }
+) {
   const { address, isConnected } = useAccount();
+  const enabled = options?.enabled ?? true;
 
   const circleQuery = useReadContract({
     address: CONTRACT_ADDRESS,
@@ -26,7 +29,7 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
     args: [circleId],
     chainId: MONAD_CHAIN_ID,
     query: {
-      enabled: hasContract,
+      enabled: hasContract && enabled,
       refetchInterval: 12_000,
     },
   });
@@ -43,7 +46,7 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
     args: [circleId],
     chainId: MONAD_CHAIN_ID,
     query: {
-      enabled: hasContract && isActive,
+      enabled: hasContract && enabled && isActive,
       refetchInterval: 12_000,
     },
   });
@@ -69,7 +72,11 @@ export function useCircleDashboard(circleId = DEFAULT_CIRCLE_ID) {
           ]
         : [],
     query: {
-      enabled: hasContract && Boolean(address) && currentRound !== undefined,
+      enabled:
+        hasContract &&
+        enabled &&
+        Boolean(address) &&
+        currentRound !== undefined,
       refetchInterval: 12_000,
     },
   });

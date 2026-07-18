@@ -1,5 +1,5 @@
 export const MONAD_RPC_URL = "https://testnet-rpc.monad.xyz";
-export const MONAD_CHAIN_ID = 10143;
+export const MONAD_CHAIN_ID = 10143 as const;
 export const MONAD_EXPLORER = "https://testnet.monadvision.com";
 
 /** Deployed SusuCircle address — set after `npm run deploy` */

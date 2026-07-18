@@ -9,7 +9,8 @@ export type ToastState =
   | {
       kind: "success";
       title: string;
-      hash: `0x${string}`;
+      hash?: `0x${string}`;
+      message?: string;
     }
   | {
       kind: "error";
@@ -47,7 +48,7 @@ export function Toast({
 
       <div className="toast-body">
         <p className="toast-title">{toast.title}</p>
-        {toast.kind === "success" ? (
+        {toast.kind === "success" && toast.hash ? (
           <a
             className="toast-link"
             href={`${MONAD_EXPLORER}/tx/${toast.hash}`}
@@ -57,9 +58,9 @@ export function Toast({
             Tx {shortenAddress(toast.hash, 6)}
             <ExternalLink className="icon" />
           </a>
-        ) : (
+        ) : toast.message ? (
           <p className="toast-msg">{toast.message}</p>
-        )}
+        ) : null}
       </div>
 
       <button

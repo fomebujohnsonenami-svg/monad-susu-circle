@@ -18,6 +18,13 @@ export const susuCircleAbi = [
   },
   {
     type: "function",
+    name: "getParticipants",
+    stateMutability: "view",
+    inputs: [{ name: "circleId", type: "uint256" }],
+    outputs: [{ name: "", type: "address[]" }],
+  },
+  {
+    type: "function",
     name: "getCurrentRecipient",
     stateMutability: "view",
     inputs: [{ name: "circleId", type: "uint256" }],
@@ -50,6 +57,31 @@ export const susuCircleAbi = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "createCircle",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "contributionAmount", type: "uint256" },
+      { name: "totalRounds", type: "uint256" },
+      { name: "roundInterval", type: "uint256" },
+    ],
+    outputs: [{ name: "circleId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "joinCircle",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "circleId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "startCircle",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "circleId", type: "uint256" }],
+    outputs: [],
   },
   {
     type: "function",
